@@ -3,11 +3,12 @@ from os import path
 from reportlab.lib.pagesizes import landscape, portrait
 from reportlab.pdfgen import canvas
 from enum import Enum
+import argparse
 
 
 class IPadModel(Enum):
-    IPAD_PRO_2021 = "iPad Pro (12.9-inch, 2021)"
-    IPAD_AIR_2020 = "iPad Air (2020)"
+    IPAD_PRO_2021 = "ipad_pro" # iPad Pro (12.9-inch, 2021)
+    IPAD_AIR_2020 = "ipad_air" # iPad Air (2020)
 
 ipad_models = {
     IPadModel.IPAD_PRO_2021: {"resolution": (2732, 2048), "ppi": 264, "scale": 2},
@@ -15,11 +16,11 @@ ipad_models = {
 }
 
 paper_inch_sizes = {
-    "A0": (33.11, 46.81),
-    "A1": (23.39, 33.11),
-    "A2": (16.54, 23.39),
-    "A3": (11.69, 16.54),
-    "A4": (8.27, 11.69)
+    "a0": (33.11, 46.81),
+    "a1": (23.39, 33.11),
+    "a2": (16.54, 23.39),
+    "a3": (11.69, 16.54),
+    "a4": (8.27, 11.69)
 }
 
 def get_paper_dimensions(ipad_model, paper_size):
@@ -162,7 +163,7 @@ def generate_pdf_batch(out_dir, size_name, width, height, block_width):
     patterns = [
         ("BLANK", generate_pdf_blank),
         ("GRID", generate_pdf_grid),
-        #("DOT", generate_pdf_dot)
+        ("DOT", generate_pdf_dot)
     ]
     
     configs = [
@@ -180,35 +181,35 @@ def generate_pdf_batch(out_dir, size_name, width, height, block_width):
 
 
 def main():
-    
-    paper_size_names = list(paper_inch_sizes.keys())
-    opts = paper_size_names + ["ALL"]
-    
-    if len(sys.argv) < 2:
-        print("Usage: python paper.py <paper_size>")
-        print("Available paper sizes: " + ", ".join(opts))
-        return
+    parser = argparse.ArgumentParser(description="Generate PDFs for paper sizes on an iPad.")
+    parser.add_argument("paper_size", choices=["all"] + list(paper_inch_sizes.keys()), help="Paper size")
+    parser.add_argument("--model", choices=[m.value for m in IPadModel], default=IPadModel.IPAD_PRO_2021.value,
+                        help="iPad model")
+    parser.add_argument("--direction", choices=["landscape", "portrait"], default="landscape",
+                        help="Paper direction")
 
-    paper_size = sys.argv[1].upper()
+    args = parser.parse_args()
 
-    if paper_size not in opts:
-        print("Invalid paper size. Available options: " + ", ".join(opts))
-        return
-        
+    paper_size = args.paper_size
+    ipad_model = IPadModel(args.model)
+    direction = args.direction.lower()
+
     out_dir = path.join(path.curdir, "out")
     os.makedirs(out_dir, exist_ok=True)
-    
-    if paper_size == "ALL":
-        for name in paper_size_names:
-            width, height = get_paper_dimensions(IPadModel.IPAD_PRO_2021, name)
-            block_width = get_block_width(IPadModel.IPAD_PRO_2021)
-            
-            generate_pdf_batch(out_dir, name, width, height, block_width)
+
+    if paper_size == "all":
+        paper_sizes_to_process = list(paper_inch_sizes.keys())
     else:
-        width, height = get_paper_dimensions(IPadModel.IPAD_PRO_2021, paper_size)
-        block_width = get_block_width(IPadModel.IPAD_PRO_2021)
-        
-        generate_pdf_batch(out_dir, paper_size, width, height, block_width)
+        paper_sizes_to_process = [paper_size]
+
+    for name in paper_sizes_to_process:
+        width, height = get_paper_dimensions(ipad_model, name)
+        if direction == "landscape":
+            width, height = height, width  # Swap width and height for landscape orientation
+        block_width = get_block_width(ipad_model)
+
+        generate_pdf_batch(out_dir, name.upper(), width, height, block_width)
+
 
 
 if __name__ == '__main__':
