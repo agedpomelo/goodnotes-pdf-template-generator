@@ -2,9 +2,63 @@ import sys, os
 from os import path
 from reportlab.lib.pagesizes import landscape, portrait
 from reportlab.pdfgen import canvas
+from enum import Enum
 
 
-def generate_pdf_blank(width, height, background, dark, output_file):
+class IPadModel(Enum):
+    IPAD_PRO_2021 = "iPad Pro (12.9-inch, 2021)"
+    IPAD_AIR_2020 = "iPad Air (2020)"
+
+ipad_models = {
+    IPadModel.IPAD_PRO_2021: {"resolution": (2732, 2048), "ppi": 264, "scale": 2},
+    IPadModel.IPAD_AIR_2020: {"resolution": (2360, 1640), "ppi": 264, "scale": 2}
+}
+
+paper_inch_sizes = {
+    "A0": (33.11, 46.81),
+    "A1": (23.39, 33.11),
+    "A2": (16.54, 23.39),
+    "A3": (11.69, 16.54),
+    "A4": (8.27, 11.69)
+}
+
+def get_paper_dimensions(ipad_model, paper_size):
+
+    if ipad_model not in ipad_models:
+        raise ValueError("Invalid iPad model")
+
+    if paper_size not in paper_inch_sizes.keys():
+        raise ValueError("Invalid paper size")
+
+    model_info = ipad_models[ipad_model]
+    resolution = model_info["resolution"]
+    ppi = model_info["ppi"]
+    scale_factor = model_info["scale"]
+
+    paper_width, paper_height = paper_inch_sizes[paper_size]
+    pixel_width = round(paper_width * ppi / scale_factor)
+    pixel_height = round(paper_height * ppi / scale_factor)
+
+    return pixel_width, pixel_height
+
+
+def mm_to_inch(mm):
+    inch = mm / 25.4
+    return inch
+
+
+def get_block_width(ipad_model):
+    if ipad_model not in ipad_models:
+        raise ValueError("Invalid iPad model")
+    
+    model_info = ipad_models[ipad_model]
+    ppi = model_info["ppi"]
+    scale_factor = model_info["scale"]
+
+    return round(mm_to_inch(5) * ppi / scale_factor)
+
+
+def generate_pdf_blank(width, height, block_width, background, dark, output_file):
     c = canvas.Canvas(output_file, pagesize=(width, height))
 
     # Apply background color
@@ -14,8 +68,8 @@ def generate_pdf_blank(width, height, background, dark, output_file):
     c.save()
 
 
-def generate_pdf_grid(width, height, background, dark, output_file):
-    line_spacing = int(16.5)
+def generate_pdf_grid(width, height, block_width, background, dark, output_file):
+    line_spacing = int(block_width)
     thicker_line_spacing = 10 * line_spacing
 
     c = canvas.Canvas(output_file, pagesize=(width, height))
@@ -54,9 +108,9 @@ def generate_pdf_grid(width, height, background, dark, output_file):
     c.save()
 
 
-def generate_pdf_dot(width, height, background, dark, output_file):
+def generate_pdf_dot(width, height, block_width, background, dark, output_file):
     
-    line_spacing = int(16.5)
+    line_spacing = int(block_width)
     thicker_line_spacing = 10 * line_spacing
 
     c = canvas.Canvas(output_file, pagesize=(width, height))
@@ -100,7 +154,7 @@ def hex_to_rgb(hex_value):
     return tuple(comp / 255 for comp in rgb_tuple)
 
 
-def generate_pdf_batch(out_dir, size_name, width, height):
+def generate_pdf_batch(out_dir, size_name, width, height, block_width):
     
     size_dir = os.path.join(out_dir, size_name)
     os.makedirs(size_dir, exist_ok=True)
@@ -108,7 +162,7 @@ def generate_pdf_batch(out_dir, size_name, width, height):
     patterns = [
         ("BLANK", generate_pdf_blank),
         ("GRID", generate_pdf_grid),
-        ("DOT", generate_pdf_dot)
+        #("DOT", generate_pdf_dot)
     ]
     
     configs = [
@@ -121,39 +175,40 @@ def generate_pdf_batch(out_dir, size_name, width, height):
         for (color_code, color, dark) in configs:
             filename = f"{size_name} {color_code} {pattern}.pdf"
             file_path = os.path.join(size_dir, filename)
-            action(width, height, color, dark, file_path)
+            action(width, height, block_width, color, dark, file_path)
             print(f"PDF file '{filename}' has been generated.")
 
 
 def main():
+    
+    paper_size_names = list(paper_inch_sizes.keys())
+    opts = paper_size_names + ["ALL"]
+    
     if len(sys.argv) < 2:
         print("Usage: python paper.py <paper_size>")
-        print("Available paper sizes: A0, A1, A2, A3, A4, ALL")
+        print("Available paper sizes: " + ", ".join(opts))
         return
 
     paper_size = sys.argv[1].upper()
 
-    if paper_size not in ['A0', 'A1', 'A2', 'A3', 'A4', 'ALL']:
-        print("Invalid paper size. Available options: A0, A1, A2, A3, A4, ALL")
+    if paper_size not in opts:
+        print("Invalid paper size. Available options: " + ", ".join(opts))
         return
-
-    paper_sizes = {
-        'A0': (3370.39, 2383.94),
-        'A1': (2383.94, 1683.78),
-        'A2': (1683.78, 1190.55),
-        'A3': (1190.55, 841.89),
-        'A4': (841.89, 595.28)
-    }
-    
+        
     out_dir = path.join(path.curdir, "out")
     os.makedirs(out_dir, exist_ok=True)
     
     if paper_size == "ALL":
-        for size_name, (width, height) in paper_sizes.items():
-            generate_pdf_batch(out_dir, size_name, width, height)
+        for name in paper_size_names:
+            width, height = get_paper_dimensions(IPadModel.IPAD_PRO_2021, name)
+            block_width = get_block_width(IPadModel.IPAD_PRO_2021)
+            
+            generate_pdf_batch(out_dir, name, width, height, block_width)
     else:
-        width, height = paper_sizes[paper_size]
-        generate_pdf_batch(out_dir, paper_size, width, height)
+        width, height = get_paper_dimensions(IPadModel.IPAD_PRO_2021, paper_size)
+        block_width = get_block_width(IPadModel.IPAD_PRO_2021)
+        
+        generate_pdf_batch(out_dir, paper_size, width, height, block_width)
 
 
 if __name__ == '__main__':
