@@ -87,9 +87,9 @@ def generate_pdf_grid(width, height, block_width, background, dark, output_file)
     line_width = 0.54 if dark else 1
 
     # Generate horizontal lines
-    for y in range(int(height) - line_spacing, line_spacing, -line_spacing):
+    for y in range(line_spacing, height, line_spacing):
         # Determine if the current line is a thicker line
-        if (int(height) - y) % thicker_line_spacing == 0:
+        if y % thicker_line_spacing == 0:
             c.setStrokeColor(thicker_line_color)
             c.setLineWidth(line_width)
         else:
@@ -133,10 +133,11 @@ def generate_pdf_dot(width, height, block_width, background, dark, output_file):
     thicker_dot_transparency = 1 if dark else 0.5
 
     # Generate dots at the intersections
-    for y in range(int(height) - line_spacing, line_spacing, -line_spacing):
+    for y in range(line_spacing, height, line_spacing):
+
         for x in range(line_spacing, int(width), line_spacing):
             # Determine if the current dot is a thicker dot
-            if (int(height) - y) % thicker_line_spacing == 0 and x % thicker_line_spacing == 0:
+            if y % thicker_line_spacing == 0 and x % thicker_line_spacing == 0:
                 dot_size = thicker_dot_size
                 dot_color = thicker_dot_color
                 dot_transparency = thicker_dot_transparency
