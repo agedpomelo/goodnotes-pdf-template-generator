@@ -95,7 +95,9 @@ def generate_pdf_grid(width, height, block_width, background, dark, output_file)
         else:
             c.setStrokeColor(normal_line_color)
             c.setLineWidth(line_width)
-        c.line(0, y, width, y)
+        
+        # Flip drawing order
+        c.line(0, height - y, width, height - y)
 
     # Generate vertical lines
     for x in range(line_spacing, int(width), line_spacing):
@@ -147,7 +149,10 @@ def generate_pdf_dot(width, height, block_width, background, dark, output_file):
                 dot_transparency = normal_dot_transparency
             
             c.setFillColorRGB(*hex_to_rgb(dot_color), alpha=dot_transparency)
-            c.ellipse(x - dot_size / 2, y - dot_size / 2, x + dot_size / 2, y + dot_size / 2, fill=True, stroke=False)
+            
+            # Flip drawing order
+            ry = height - y
+            c.ellipse(x - dot_size / 2, ry - dot_size / 2, x + dot_size / 2, ry + dot_size / 2, fill=True, stroke=False)
 
     c.save()
     
